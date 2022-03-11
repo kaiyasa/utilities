@@ -1,0 +1,65 @@
+#!/bin/bash
+
+function require() {
+    type  "$1" > /dev/null  2>&1 || {
+        echo "$1 is required"
+        exit 1
+    }
+}
+
+require sed
+require basename
+require mv
+require cat
+
+prog=$(basename "$0")
+RULES=${RULES:-.rename-rules}
+
+function change() {
+    # place or modify sed expressions in this array
+    local expressions=(
+      -e 's/_/ /g'
+    )
+
+    if [ -f "$RULES" ]; then
+        sed -f "$RULES" <<< "$1"
+    else
+        sed "${expressions[*]}" <<< "$1"
+    fi
+}
+
+function perform() {
+    local cmd='' #cmd='echo'
+    local newName=$(change "$1")
+
+    if [ "$1" != "$newName" ]; then
+        $cmd mv -i "$1" "$newName"
+    else
+        echo "unchanged: $1"
+    fi
+}
+
+function forEach() {
+    local name
+
+    for name in "$@"; do
+        perform "$name"
+    done
+}
+
+function usage() {
+    cat <<EOM
+
+Simple renaming utility using sed editing for naming rules
+
+usage: $prog [files]
+       RULES=sedCommands.txt $prog [files]
+ 
+EOM
+}
+
+if [ $# -gt 0 ]; then
+    forEach "$@"
+else
+    usage
+fi
